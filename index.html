@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f1115">
+<title>Sugar Log</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩸</text></svg>">
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1f232c; --line:#272c37;
+    --txt:#e8ebf0; --dim:#8d95a6; --accent:#4f8cff;
+    --low:#ff5c7a; --ok:#3ddc97; --high:#ffb020; --vhigh:#ff6b3d;
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:16px;overscroll-behavior-y:contain}
+  body{padding-bottom:calc(76px + var(--safe-b))}
+  h1,h2,h3{margin:0;font-weight:650}
+  button{font-family:inherit;font-size:inherit;color:inherit;border:none;background:none;cursor:pointer}
+  input,select,textarea{font-family:inherit;font-size:16px;color:var(--txt);
+    background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;width:100%;outline:none}
+  input:focus,select,textarea:focus{border-color:var(--accent)}
+  select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+
+  header{position:sticky;top:0;z-index:20;background:rgba(15,17,21,.92);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);padding:14px 16px 12px;display:flex;align-items:center;gap:10px}
+  header h1{font-size:19px;letter-spacing:-.3px}
+  header .sp{flex:1}
+  .iconbtn{width:38px;height:38px;border-radius:11px;background:var(--card2);display:grid;place-items:center;font-size:17px}
+  #syncDot{width:9px;height:9px;border-radius:50%;background:var(--dim);margin-right:2px;flex:none;transition:.3s}
+
+  main{padding:16px;max-width:640px;margin:0 auto}
+  .view{display:none}.view.on{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px}
+  .lbl{font-size:12.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;font-weight:600}
+
+  /* ---- big value entry ---- */
+  .bigwrap{display:flex;align-items:baseline;justify-content:center;gap:10px;margin:6px 0 4px}
+  #val{font-size:64px;font-weight:700;text-align:center;letter-spacing:-2px;padding:4px 0;
+    background:none;border:none;border-radius:0;width:190px}
+  #val::placeholder{color:#39404f}
+  #val::-webkit-outer-spin-button,#val::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  #val{-moz-appearance:textfield}
+  .unit{font-size:15px;color:var(--dim);font-weight:600}
+  #verdict{text-align:center;font-size:14px;font-weight:650;height:20px;margin-bottom:14px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:9px 14px;border-radius:999px;background:var(--card2);border:1px solid var(--line);
+    font-size:14px;color:var(--dim);font-weight:550;transition:.12s}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+  .save{width:100%;padding:16px;border-radius:15px;background:var(--accent);color:#fff;font-weight:700;font-size:17px;margin-top:4px}
+  .save:disabled{opacity:.35}
+  .ghost{background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:13px;font-weight:600;font-size:14.5px;width:100%}
+  .danger{color:var(--low)}
+
+  details.more{margin:14px 0 4px}
+  details.more>summary{list-style:none;color:var(--dim);font-size:14px;font-weight:600;padding:6px 0;text-align:center}
+  details.more>summary::-webkit-details-marker{display:none}
+  details.more[open]>summary{margin-bottom:10px}
+  .field{margin-bottom:12px}
+
+  /* ---- history ---- */
+  .daygrp{margin-bottom:20px}
+  .dayhd{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 8px;position:sticky;top:63px;
+    background:var(--bg);z-index:5}
+  .dayhd b{font-size:14.5px}
+  .dayhd span{font-size:12.5px;color:var(--dim)}
+  .item{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);
+    border-radius:15px;padding:13px 15px;margin-bottom:8px;width:100%;text-align:left}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .iv{font-size:21px;font-weight:700;min-width:56px;letter-spacing:-.5px}
+  .imeta{flex:1;min-width:0}
+  .imeta .t{font-size:14px;font-weight:600}
+  .imeta .n{font-size:12.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .empty{text-align:center;color:var(--dim);padding:50px 20px;font-size:14.5px;line-height:1.6}
+
+  /* ---- stats ---- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+  .stat .k{font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+  .stat .v{font-size:27px;font-weight:700;margin-top:5px;letter-spacing:-.8px}
+  .stat .s{font-size:12px;color:var(--dim);margin-top:2px}
+  .bar{display:flex;height:11px;border-radius:6px;overflow:hidden;margin:12px 0 8px;background:var(--card2)}
+  .bar>i{display:block}
+  .lg{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--dim)}
+  .lg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td,th{padding:9px 4px;text-align:right;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
+  td:first-child,th:first-child{text-align:left}
+  tr:last-child td{border-bottom:none}
+
+  /* ---- nav ---- */
+  nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;background:rgba(23,26,33,.96);
+    backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:8px 6px calc(8px + var(--safe-b))}
+  nav button{flex:1;padding:7px 0;border-radius:12px;color:var(--dim);font-size:11px;font-weight:600;
+    display:flex;flex-direction:column;align-items:center;gap:3px}
+  nav button.on{color:var(--accent)}
+  nav button em{font-size:20px;font-style:normal;line-height:1}
+
+  /* ---- sheet ---- */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:none}
+  .scrim.on{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--card);
+    border-radius:22px 22px 0 0;padding:20px 18px calc(22px + var(--safe-b));max-height:88vh;overflow:auto;
+    transform:translateY(100%);transition:transform .22s cubic-bezier(.3,.8,.4,1);max-width:640px;margin:0 auto}
+  .sheet.on{transform:none}
+  .grab{width:38px;height:4px;border-radius:2px;background:var(--line);margin:-6px auto 16px}
+  .toast{position:fixed;bottom:calc(88px + var(--safe-b));left:50%;transform:translateX(-50%) translateY(14px);
+    background:var(--ok);color:#06301f;padding:11px 20px;border-radius:999px;font-weight:700;font-size:14px;
+    z-index:50;opacity:0;pointer-events:none;transition:.2s;white-space:nowrap}
+  .toast.on{opacity:1;transform:translateX(-50%)}
+  .note{font-size:12px;color:var(--dim);line-height:1.55;text-align:center;padding:8px 6px 0}
+  svg text{font-size:10px;fill:var(--dim)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="ttl">Add reading</h1>
+  <div class="sp"></div>
+  <span id="syncDot" title="Syncing…"></span>
+  <button class="iconbtn" id="btnSet" title="Settings">⚙</button>
+</header>
+
+<main>
+  <!-- ============ LOG ============ -->
+  <section class="view on" id="v-log">
+    <div class="card">
+      <div class="bigwrap">
+        <input id="val" type="number" inputmode="decimal" placeholder="—" step="1" min="10" max="900">
+        <span class="unit">mg/dL</span>
+      </div>
+      <div id="verdict"></div>
+
+      <div class="lbl">When</div>
+      <div class="chips" id="tags"></div>
+
+      <details class="more">
+        <summary>+ time, note, dose</summary>
+        <div class="field">
+          <div class="lbl">Date &amp; time</div>
+          <input id="when" type="datetime-local">
+        </div>
+        <div class="field">
+          <div class="lbl">Note</div>
+          <input id="note" type="text" placeholder="e.g. after couscous, felt dizzy…" maxlength="120">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <div class="lbl">Insulin / medication</div>
+          <input id="dose" type="text" placeholder="e.g. 8u rapid, metformin 500" maxlength="60">
+        </div>
+      </details>
+
+      <button class="save" id="btnSave" disabled>Save reading</button>
+    </div>
+    <div id="recent"></div>
+  </section>
+
+  <!-- ============ HISTORY ============ -->
+  <section class="view" id="v-hist">
+    <div class="row" style="margin-bottom:14px">
+      <select id="fRange">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="0">All time</option>
+      </select>
+      <select id="fTag"><option value="">All tags</option></select>
+    </div>
+    <div id="histList"></div>
+  </section>
+
+  <!-- ============ TRENDS ============ -->
+  <section class="view" id="v-stat">
+    <select id="sRange" style="margin-bottom:14px">
+      <option value="7">Last 7 days</option>
+      <option value="30" selected>Last 30 days</option>
+      <option value="90">Last 90 days</option>
+      <option value="0">All time</option>
+    </select>
+    <div id="statBody"></div>
+  </section>
+</main>
+
+<nav>
+  <button class="on" data-v="log"><em>➕</em>Log</button>
+  <button data-v="hist"><em>📋</em>History</button>
+  <button data-v="stat"><em>📈</em>Trends</button>
+</nav>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Sugar Log — blood-glucose diary. Readings sync to a private
+   Supabase project so the same log shows up on every device
+   that opens this link. A local cache keeps it usable offline.
+   ============================================================ */
+const SUPA_URL='https://rqqlmwwxslofpkigvyba.supabase.co';
+const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxcWxtd3d4c2xvZnBraWd2eWJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3ODMzMDksImV4cCI6MjEwMTM1OTMwOX0.rnYZeNZukaUBTT8pFGrFZ7LRHxtKTfv-xhX2MCdsrOo';
+const VAPID_PUBLIC='BGqQTHo4gQcSBWD2C2we3FnZkxpWGymSpm3Yki1tom3C7CUb2Wbn4z-JyVUOYuHpnIzzuxlroLc9V06phzIKPVA';
+
+const K_DATA='sugarlog.entries.v1', K_CFG='sugarlog.config.v1', K_PENDING='sugarlog.pending.v1';
+const TAGS=['Fasting','Before meal','After meal','Bedtime','Random'];
+
+let entries = load(K_DATA, []);
+let cfg = Object.assign({low:70, tLow:80, tHigh:180, veryHigh:250}, load(K_CFG, {}));
+let editing = null;      // id of entry being edited, else null
+let pickedTag = 'Fasting';
+let whenTouched = false; // true once the user hand-picks a date/time
+let online = true;
+
+function load(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch(e){ return d } }
+function save(){ localStorage.setItem(K_DATA, JSON.stringify(entries)); }
+function saveCfg(){ localStorage.setItem(K_CFG, JSON.stringify(cfg)); }
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+/* ---------- cloud sync (Supabase REST) ---------- */
+function supaHeaders(extra){
+  return Object.assign({apikey:SUPA_ANON, Authorization:'Bearer '+SUPA_ANON, 'Content-Type':'application/json'}, extra||{});
+}
+async function cloudFetchAll(){
+  const res=await fetch(`${SUPA_URL}/rest/v1/glucose_readings?select=id,ts,v,tag,note,dose&order=ts.desc`, {headers:supaHeaders()});
+  if(!res.ok) throw new Error('fetch '+res.status);
+  return (await res.json()).map(r=>({id:r.id, ts:Number(r.ts), v:Number(r.v), tag:r.tag||'', note:r.note||'', dose:r.dose||''}));
+}
+async function cloudUpsert(rec){
+  const res=await fetch(`${SUPA_URL}/rest/v1/glucose_readings?on_conflict=id`, {
+    method:'POST', headers:supaHeaders({Prefer:'resolution=merge-duplicates,return=minimal'}), body:JSON.stringify([rec])
+  });
+  if(!res.ok) throw new Error('save '+res.status);
+}
+async function cloudBulkUpsert(recs){
+  if(!recs.length) return;
+  const res=await fetch(`${SUPA_URL}/rest/v1/glucose_readings?on_conflict=id`, {
+    method:'POST', headers:supaHeaders({Prefer:'resolution=merge-duplicates,return=minimal'}), body:JSON.stringify(recs)
+  });
+  if(!res.ok) throw new Error('bulk '+res.status);
+}
+async function cloudDelete(id){
+  const res=await fetch(`${SUPA_URL}/rest/v1/glucose_readings?id=eq.${encodeURIComponent(id)}`, {method:'DELETE', headers:supaHeaders({Prefer:'return=minimal'})});
+  if(!res.ok) throw new Error('delete '+res.status);
+}
+async function cloudDeleteAll(){
+  const res=await fetch(`${SUPA_URL}/rest/v1/glucose_readings?ts=gte.0`, {method:'DELETE', headers:supaHeaders({Prefer:'return=minimal'})});
+  if(!res.ok) throw new Error('wipe '+res.status);
+}
+
+function loadPending(){ return load(K_PENDING, []) }
+function savePending(p){ localStorage.setItem(K_PENDING, JSON.stringify(p)) }
+function queuePending(op){ const p=loadPending(); p.push(op); savePending(p) }
+async function flushPending(){
+  const p=loadPending(); if(!p.length) return;
+  const remain=[];
+  for(const op of p){
+    try{
+      if(op.type==='upsert') await cloudUpsert(op.rec);
+      else if(op.type==='delete') await cloudDelete(op.id);
+    }catch(e){ remain.push(op) }
+  }
+  savePending(remain);
+}
+function setOnline(v){
+  online=v; const d=$('#syncDot'); if(!d) return;
+  d.style.background = v ? 'var(--ok)' : 'var(--low)';
+  d.title = v ? 'Synced to cloud' : 'Offline — will sync when back online';
+}
+async function bootSync(){
+  try{
+    await flushPending();
+    entries = await cloudFetchAll();
+    save(); setOnline(true);
+  }catch(e){ setOnline(false); }
+  renderAll();
+}
+
+/* ---------- date helpers (all local time, never UTC) ---------- */
+const pad=n=>String(n).padStart(2,'0');
+function toLocalInput(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}` }
+function dayKey(ts){ const d=new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` }
+function timeStr(ts){ const d=new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}` }
+function dayLabel(key){
+  const t=new Date(), y=new Date(Date.now()-864e5);
+  if(key===dayKey(t)) return 'Today';
+  if(key===dayKey(y)) return 'Yesterday';
+  const [Y,M,D]=key.split('-').map(Number);
+  return new Date(Y,M-1,D).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+}
+
+/* ---------- classification ---------- */
+function level(v){
+  if(v < cfg.low) return {k:'low',  c:'var(--low)',   t:'Low'};
+  if(v < cfg.tLow) return {k:'ok',  c:'var(--ok)',    t:'Below target'};
+  if(v <= cfg.tHigh) return {k:'ok',c:'var(--ok)',    t:'In range'};
+  if(v <= cfg.veryHigh) return {k:'hi',c:'var(--high)',t:'High'};
+  return {k:'vhi', c:'var(--vhigh)', t:'Very high'};
+}
+
+/* ---------- toast ---------- */
+let tT;
+function toast(msg,bad){
+  const el=$('#toast'); el.textContent=msg;
+  el.style.background = bad ? 'var(--high)' : 'var(--ok)';
+  el.classList.add('on'); clearTimeout(tT);
+  tT=setTimeout(()=>el.classList.remove('on'),1900);
+}
+
+/* ============================ LOG VIEW ============================ */
+function buildTags(){
+  $('#tags').innerHTML = TAGS.map(t=>
+    `<button class="chip${t===pickedTag?' on':''}" data-tag="${t}">${t}</button>`).join('');
+}
+$('#tags').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  pickedTag=b.dataset.tag; buildTags();
+});
+
+$('#val').addEventListener('input',()=>{
+  const v=parseFloat($('#val').value);
+  const ok = !isNaN(v) && v>=10 && v<=900;
+  $('#btnSave').disabled=!ok;
+  const el=$('#verdict');
+  if(!ok){ el.textContent=''; $('#val').style.color='var(--txt)'; return; }
+  const L=level(v);
+  el.textContent=L.t; el.style.color=L.c; $('#val').style.color=L.c;
+});
+
+$('#btnSave').addEventListener('click', async ()=>{
+  const v=Math.round(parseFloat($('#val').value));
+  if(isNaN(v)) return;
+  // The date field is pre-filled when the page loads, so it goes stale if the
+  // app sits open. Only trust it once the user has actually picked a time.
+  const wRaw=$('#when').value;
+  const ts = (whenTouched && wRaw) ? new Date(wRaw).getTime() : Date.now();
+  const rec={
+    id: editing || (Date.now()+'-'+Math.floor(performance.now()*1000%1e6)),
+    ts, v, tag:pickedTag,
+    note:$('#note').value.trim(), dose:$('#dose').value.trim()
+  };
+  if(editing){
+    const i=entries.findIndex(e=>e.id===editing);
+    if(i>-1) entries[i]=rec;
+    editing=null; $('#btnSave').textContent='Save reading';
+    toast('Updated');
+  }else{
+    entries.push(rec); toast('Saved ✓');
+  }
+  save(); resetForm(); renderAll();
+  try{ await cloudUpsert(rec); setOnline(true); }
+  catch(e){ queuePending({type:'upsert', rec}); setOnline(false); }
+});
+
+function resetForm(){
+  $('#val').value=''; $('#note').value=''; $('#dose').value='';
+  $('#verdict').textContent=''; $('#val').style.color='var(--txt)';
+  $('#when').value=toLocalInput(new Date());
+  $('#btnSave').disabled=true; $('#btnSave').textContent='Save reading';
+  pickedTag='Fasting'; buildTags(); editing=null; whenTouched=false;
+  $('.more').open=false;
+}
+$('#when').addEventListener('input',()=>{ whenTouched=true });
+// coming back to the app after a while: refresh the pre-filled "now"
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden && !whenTouched && !editing) $('#when').value=toLocalInput(new Date());
+});
+
+function renderRecent(){
+  const last=[...entries].sort((a,b)=>b.ts-a.ts).slice(0,3);
+  if(!last.length){ $('#recent').innerHTML=''; return; }
+  $('#recent').innerHTML='<div class="lbl" style="padding-left:4px">Recent</div>'+
+    last.map(itemHTML).join('');
+}
+
+/* ============================ HISTORY ============================ */
+function itemHTML(e){
+  const L=level(e.v);
+  const sub=[timeStr(e.ts), e.tag, e.dose, e.note].filter(Boolean).join(' · ');
+  return `<button class="item" data-id="${e.id}">
+    <span class="dot" style="background:${L.c}"></span>
+    <span class="iv" style="color:${L.c}">${e.v}</span>
+    <span class="imeta"><div class="t">${L.t}</div><div class="n">${esc(sub)}</div></span>
+    <span style="color:var(--dim);font-size:18px">›</span>
+  </button>`;
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) }
+
+function filtered(days, tag){
+  const cut = days ? Date.now()-days*864e5 : 0;
+  return entries.filter(e=>e.ts>=cut && (!tag || e.tag===tag)).sort((a,b)=>b.ts-a.ts);
+}
+
+function renderHist(){
+  const list=filtered(+$('#fRange').value, $('#fTag').value);
+  if(!list.length){
+    $('#histList').innerHTML='<div class="empty">No readings here yet.<br>Log one from the <b>Log</b> tab.</div>';
+    return;
+  }
+  const groups={};
+  list.forEach(e=>{ (groups[dayKey(e.ts)] ||= []).push(e) });
+  $('#histList').innerHTML = Object.keys(groups).map(k=>{
+    const g=groups[k], avg=Math.round(g.reduce((s,e)=>s+e.v,0)/g.length);
+    return `<div class="daygrp">
+      <div class="dayhd"><b>${dayLabel(k)}</b><span>${g.length} reading${g.length>1?'s':''} · avg ${avg}</span></div>
+      ${g.map(itemHTML).join('')}</div>`;
+  }).join('');
+}
+
+document.addEventListener('click',e=>{
+  const it=e.target.closest('.item'); if(!it) return;
+  openEntrySheet(it.dataset.id);
+});
+
+/* ============================ SHEETS ============================ */
+function openSheet(html){
+  $('#sheetBody').innerHTML=html;
+  $('#scrim').classList.add('on'); $('#sheet').classList.add('on');
+}
+function closeSheet(){ $('#scrim').classList.remove('on'); $('#sheet').classList.remove('on'); }
+$('#scrim').addEventListener('click',closeSheet);
+
+function openEntrySheet(id){
+  const e=entries.find(x=>x.id===id); if(!e) return;
+  const L=level(e.v), d=new Date(e.ts);
+  openSheet(`
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-size:52px;font-weight:700;color:${L.c};letter-spacing:-2px">${e.v}<span style="font-size:16px;color:var(--dim);font-weight:600"> mg/dL</span></div>
+      <div style="color:${L.c};font-weight:650;font-size:14px">${L.t}</div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--dim)">When</span><b>${d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})} · ${timeStr(e.ts)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--dim)">Tag</span><b>${esc(e.tag||'—')}</b></div>
+      ${e.dose?`<div style="display:flex;justify-content:space-between;padding:5px 0;gap:16px"><span style="color:var(--dim);flex:none">Dose</span><b style="text-align:right">${esc(e.dose)}</b></div>`:''}
+      ${e.note?`<div style="display:flex;justify-content:space-between;padding:5px 0;gap:16px"><span style="color:var(--dim);flex:none">Note</span><b style="text-align:right">${esc(e.note)}</b></div>`:''}
+    </div>
+    <div class="row">
+      <button class="ghost" onclick="editEntry('${e.id}')">✏️ Edit</button>
+      <button class="ghost danger" onclick="delEntry('${e.id}')">🗑 Delete</button>
+    </div>`);
+}
+
+window.editEntry=id=>{
+  const e=entries.find(x=>x.id===id); if(!e) return;
+  closeSheet(); go('log');
+  editing=id; pickedTag=e.tag||'Fasting'; buildTags();
+  $('#val').value=e.v; $('#val').dispatchEvent(new Event('input'));
+  $('#when').value=toLocalInput(new Date(e.ts)); whenTouched=true;
+  $('#note').value=e.note||''; $('#dose').value=e.dose||'';
+  $('.more').open=true;
+  $('#btnSave').textContent='Update reading';
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+window.delEntry=async id=>{
+  if(!confirm('Delete this reading?')) return;
+  entries=entries.filter(x=>x.id!==id); save(); closeSheet(); renderAll(); toast('Deleted',true);
+  try{ await cloudDelete(id); setOnline(true); }
+  catch(e){ queuePending({type:'delete', id}); setOnline(false); }
+};
+
+/* ============================ SETTINGS ============================ */
+$('#btnSet').addEventListener('click', async ()=>{
+  openSheet(`
+    <h2 style="font-size:19px;margin-bottom:4px">Settings</h2>
+    <p style="color:var(--dim);font-size:13px;margin:0 0 18px">Target range used for colours and "time in range".</p>
+    <div class="grid2">
+      <div><div class="lbl">Low below</div><input id="cLow" type="number" value="${cfg.low}"></div>
+      <div><div class="lbl">Target from</div><input id="cTL" type="number" value="${cfg.tLow}"></div>
+      <div><div class="lbl">Target to</div><input id="cTH" type="number" value="${cfg.tHigh}"></div>
+      <div><div class="lbl">Very high above</div><input id="cVH" type="number" value="${cfg.veryHigh}"></div>
+    </div>
+    <button class="save" style="margin-bottom:22px" onclick="applyCfg()">Save targets</button>
+
+    <div class="lbl">Reminders</div>
+    <button class="ghost" id="btnReminder" style="margin-bottom:18px" disabled onclick="toggleReminders()">Checking…</button>
+
+    <div class="lbl">Your data (${entries.length} readings)</div>
+    <div class="row" style="margin-bottom:10px">
+      <button class="ghost" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="ghost" onclick="exportJSON()">💾 Backup</button>
+    </div>
+    <button class="ghost" style="margin-bottom:10px" onclick="$('#imp').click()">⬆ Restore from backup</button>
+    <input id="imp" type="file" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
+    <button class="ghost danger" onclick="wipe()">Erase everything</button>
+    <p class="note">Your readings sync to your own private cloud log — open this same link on your phone and laptop and everything shows up on both.<br><br>
+    Reminders need the app added to your Home Screen to work reliably (Share → Add to Home Screen on iPhone; ⋮ menu → Add to Home screen on Android), then opened from that icon.<br><br>
+    This is a personal diary, not a medical device. Always follow your doctor's advice.</p>`);
+  const status = await reminderStatus();
+  const btn=document.getElementById('btnReminder'); if(!btn) return;
+  btn.disabled=false;
+  if(status==='unsupported'){ btn.textContent='🔔 Reminders not supported here'; btn.disabled=true; btn.dataset.state='off'; }
+  else if(status==='on'){ btn.textContent='🔕 Turn off reminders (every 2h)'; btn.dataset.state='on'; }
+  else { btn.textContent='🔔 Enable reminders every 2h'; btn.dataset.state='off'; }
+});
+window.applyCfg=()=>{
+  const l=+$('#cLow').value, a=+$('#cTL').value, b=+$('#cTH').value, v=+$('#cVH').value;
+  if(!(l<a && a<b && b<v)){ toast('Values must increase',true); return }
+  cfg={low:l,tLow:a,tHigh:b,veryHigh:v}; saveCfg(); closeSheet(); renderAll(); toast('Targets saved');
+};
+window.wipe=async ()=>{
+  if(!confirm('Delete ALL readings permanently? This cannot be undone.')) return;
+  if(!confirm('Really sure? Export a backup first if you might need it.')) return;
+  entries=[]; save(); closeSheet(); renderAll(); toast('All data erased',true);
+  try{ await cloudDeleteAll(); setOnline(true); }
+  catch(e){ setOnline(false); toast('Cloud copy not reached — reopen when online to finish erasing',true); }
+};
+
+function download(name, text, mime){
+  const b=new Blob([text],{type:mime});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove()},1000);
+}
+window.exportCSV=()=>{
+  const rows=[['date','time','mg/dL','tag','dose','note']];
+  [...entries].sort((a,b)=>a.ts-b.ts).forEach(e=>{
+    rows.push([dayKey(e.ts), timeStr(e.ts), e.v, e.tag||'', e.dose||'', e.note||'']);
+  });
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  download(`sugar-log-${dayKey(Date.now())}.csv`,'﻿'+csv,'text/csv;charset=utf-8');
+  toast('CSV exported');
+};
+window.exportJSON=()=>{
+  download(`sugar-backup-${dayKey(Date.now())}.json`, JSON.stringify({cfg,entries},null,1),'application/json');
+  toast('Backup saved');
+};
+window.importJSON=inp=>{
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=async ()=>{
+    try{
+      const d=JSON.parse(r.result);
+      const inc=Array.isArray(d)?d:d.entries;
+      if(!Array.isArray(inc)) throw 0;
+      const seen=new Set(entries.map(e=>e.id));
+      const added=[];
+      inc.forEach(e=>{ if(e && e.id && !seen.has(e.id) && typeof e.v==='number'){ entries.push(e); seen.add(e.id); added.push(e) } });
+      if(d.cfg) { cfg=Object.assign(cfg,d.cfg); saveCfg(); }
+      save(); closeSheet(); renderAll(); toast(`${added.length} reading${added.length===1?'':'s'} restored`);
+      try{ await cloudBulkUpsert(added); setOnline(true); }
+      catch(e){ added.forEach(rec=>queuePending({type:'upsert', rec})); setOnline(false); }
+    }catch(err){ toast('That file is not a valid backup',true) }
+  };
+  r.readAsText(f); inp.value='';
+};
+
+/* ============================ TRENDS ============================ */
+function renderStats(){
+  const days=+$('#sRange').value;
+  const list=filtered(days,'').slice().sort((a,b)=>a.ts-b.ts);
+  const body=$('#statBody');
+  if(list.length<1){
+    body.innerHTML='<div class="empty">Nothing to chart yet.<br>Log a few readings and your trends show up here.</div>';
+    return;
+  }
+  const vals=list.map(e=>e.v);
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  const a1c=(avg+46.7)/28.7;
+  const lo=vals.filter(v=>v<cfg.low).length;
+  const inr=vals.filter(v=>v>=cfg.low && v<=cfg.tHigh).length;
+  const hi=vals.filter(v=>v>cfg.tHigh && v<=cfg.veryHigh).length;
+  const vhi=vals.filter(v=>v>cfg.veryHigh).length;
+  const n=vals.length, pc=x=>Math.round(x/n*100);
+
+  // per-tag averages
+  const byTag={};
+  list.forEach(e=>{ const t=e.tag||'—'; (byTag[t] ||= []).push(e.v) });
+
+  body.innerHTML=`
+    <div class="grid2">
+      <div class="stat"><div class="k">Average</div><div class="v">${Math.round(avg)}</div><div class="s">mg/dL · ${n} readings</div></div>
+      <div class="stat"><div class="k">Est. A1c</div><div class="v">${a1c.toFixed(1)}%</div><div class="s">estimate only</div></div>
+      <div class="stat"><div class="k">Lowest</div><div class="v" style="color:var(--low)">${Math.min(...vals)}</div><div class="s">${dayLabel(dayKey(list[vals.indexOf(Math.min(...vals))].ts))}</div></div>
+      <div class="stat"><div class="k">Highest</div><div class="v" style="color:var(--high)">${Math.max(...vals)}</div><div class="s">${dayLabel(dayKey(list[vals.indexOf(Math.max(...vals))].ts))}</div></div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">Time in range</div>
+      <div style="font-size:31px;font-weight:700;letter-spacing:-1px">${pc(inr)}%</div>
+      <div class="bar">
+        <i style="width:${pc(lo)}%;background:var(--low)"></i>
+        <i style="width:${pc(inr)}%;background:var(--ok)"></i>
+        <i style="width:${pc(hi)}%;background:var(--high)"></i>
+        <i style="width:${pc(vhi)}%;background:var(--vhigh)"></i>
+      </div>
+      <div class="lg">
+        <span><i style="background:var(--low)"></i>Low ${pc(lo)}%</span>
+        <span><i style="background:var(--ok)"></i>In range ${pc(inr)}%</span>
+        <span><i style="background:var(--high)"></i>High ${pc(hi)}%</span>
+        <span><i style="background:var(--vhigh)"></i>Very high ${pc(vhi)}%</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">Trend</div>
+      ${chart(list)}
+    </div>
+
+    <div class="card">
+      <div class="lbl">By time of day</div>
+      <table><thead><tr><th>Tag</th><th>Avg</th><th>Min</th><th>Max</th><th>n</th></tr></thead><tbody>
+      ${TAGS.filter(t=>byTag[t]).map(t=>{
+        const v=byTag[t], m=Math.round(v.reduce((a,b)=>a+b,0)/v.length), L=level(m);
+        return `<tr><td>${t}</td><td style="color:${L.c};font-weight:700">${m}</td><td>${Math.min(...v)}</td><td>${Math.max(...v)}</td><td>${v.length}</td></tr>`;
+      }).join('')}
+      </tbody></table>
+    </div>
+    <p class="note">Estimated A1c is a rough formula from your average and only counts readings you logged here — it is not a lab result.</p>`;
+}
+
+function chart(list){
+  const W=560,H=210,PL=34,PR=10,PT=12,PB=24;
+  const t0=list[0].ts, t1=list[list.length-1].ts;
+  const span=Math.max(t1-t0, 36e5);
+  const vmin=Math.min(cfg.low-20, ...list.map(e=>e.v))-10;
+  const vmax=Math.max(cfg.tHigh+40, ...list.map(e=>e.v))+10;
+  const X=ts=>PL+(ts-t0)/span*(W-PL-PR);
+  const Y=v=>PT+(vmax-v)/(vmax-vmin)*(H-PT-PB);
+  const pts=list.map(e=>`${X(e.ts).toFixed(1)},${Y(e.v).toFixed(1)}`).join(' ');
+  const gy=[cfg.low,cfg.tHigh,cfg.veryHigh].filter(v=>v>vmin&&v<vmax);
+  const band=`<rect x="${PL}" y="${Y(cfg.tHigh)}" width="${W-PL-PR}" height="${Math.max(0,Y(cfg.low)-Y(cfg.tHigh))}" fill="#3ddc97" opacity=".09"/>`;
+  const grid=gy.map(v=>`<line x1="${PL}" y1="${Y(v)}" x2="${W-PR}" y2="${Y(v)}" stroke="#272c37" stroke-dasharray="3 4"/>
+     <text x="4" y="${Y(v)+3.5}">${v}</text>`).join('');
+  const dots=list.map(e=>`<circle cx="${X(e.ts).toFixed(1)}" cy="${Y(e.v).toFixed(1)}" r="3.2" fill="${level(e.v).c}"/>`).join('');
+  const lbl=(ts)=>{const d=new Date(ts);return `${d.getDate()}/${d.getMonth()+1}`};
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+    ${band}${grid}
+    ${list.length>1?`<polyline points="${pts}" fill="none" stroke="#4f8cff" stroke-width="1.6" stroke-linejoin="round" opacity=".65"/>`:''}
+    ${dots}
+    <text x="${PL}" y="${H-6}">${lbl(t0)}</text>
+    <text x="${W-PR}" y="${H-6}" text-anchor="end">${lbl(t1)}</text>
+  </svg>`;
+}
+
+/* ============================ REMINDERS (push) ============================ */
+function urlBase64ToUint8Array(b64){
+  const pad='='.repeat((4-b64.length%4)%4);
+  const raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));
+  const arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+async function reminderStatus(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported';
+  try{
+    const reg=await navigator.serviceWorker.getRegistration();
+    if(!reg) return 'off';
+    const sub=await reg.pushManager.getSubscription();
+    return sub ? 'on' : 'off';
+  }catch(e){ return 'off' }
+}
+async function enableReminders(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    throw new Error('Not supported in this browser. On iPhone: add this app to your Home Screen first, then open it from there.');
+  }
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted') throw new Error('Notification permission was not granted');
+  const reg=await navigator.serviceWorker.register('sw.js');
+  await navigator.serviceWorker.ready;
+  const sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC)});
+  const j=sub.toJSON();
+  const res=await fetch(`${SUPA_URL}/rest/v1/push_subscriptions?on_conflict=endpoint`, {
+    method:'POST', headers:supaHeaders({Prefer:'resolution=merge-duplicates,return=minimal'}),
+    body:JSON.stringify([{endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth}])
+  });
+  if(!res.ok) throw new Error('Could not save the subscription to the cloud');
+}
+async function disableReminders(){
+  const reg=await navigator.serviceWorker.getRegistration(); if(!reg) return;
+  const sub=await reg.pushManager.getSubscription(); if(!sub) return;
+  const endpoint=sub.endpoint;
+  await sub.unsubscribe();
+  try{ await fetch(`${SUPA_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(endpoint)}`, {method:'DELETE', headers:supaHeaders({Prefer:'return=minimal'})}) }catch(e){}
+}
+window.toggleReminders=async ()=>{
+  const btn=document.getElementById('btnReminder'); if(!btn || btn.disabled) return;
+  const prevState=btn.dataset.state;
+  btn.disabled=true; btn.textContent='Working…';
+  try{
+    if(prevState==='on'){
+      await disableReminders();
+      btn.textContent='🔔 Enable reminders every 2h'; btn.dataset.state='off';
+      toast('Reminders turned off');
+    }else{
+      await enableReminders();
+      btn.textContent='🔕 Turn off reminders (every 2h)'; btn.dataset.state='on';
+      toast('Reminders on — every 2 hours');
+    }
+  }catch(e){
+    toast(e.message || 'Could not update reminders', true);
+    btn.textContent = prevState==='on' ? '🔕 Turn off reminders (every 2h)' : '🔔 Enable reminders every 2h';
+  }
+  btn.disabled=false;
+};
+
+/* ============================ NAV ============================ */
+const TITLES={log:'Add reading',hist:'History',stat:'Trends'};
+function go(v){
+  $$('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
+  $$('nav button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  $('#ttl').textContent=TITLES[v];
+  if(v==='hist') renderHist();
+  if(v==='stat') renderStats();
+  window.scrollTo(0,0);
+}
+$$('nav button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.v)));
+$('#fRange').addEventListener('change',renderHist);
+$('#fTag').addEventListener('change',renderHist);
+$('#sRange').addEventListener('change',renderStats);
+
+function renderAll(){
+  $('#fTag').innerHTML='<option value="">All tags</option>'+TAGS.map(t=>`<option>${t}</option>`).join('');
+  renderRecent();
+  if($('#v-hist').classList.contains('on')) renderHist();
+  if($('#v-stat').classList.contains('on')) renderStats();
+}
+
+/* ============================ BOOT ============================ */
+if('scrollRestoration' in history) history.scrollRestoration='manual';
+buildTags();
+resetForm();
+renderAll();
+bootSync();
+window.addEventListener('online', bootSync);
+window.addEventListener('focus', bootSync);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) bootSync(); });
+</script>
+</body>
+</html>
