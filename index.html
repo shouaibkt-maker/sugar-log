@@ -173,6 +173,7 @@
   <section class="view" id="v-hist">
     <div class="row" style="margin-bottom:14px">
       <select id="fRange">
+        <option value="today">Today</option>
         <option value="7">Last 7 days</option>
         <option value="30" selected>Last 30 days</option>
         <option value="90">Last 90 days</option>
@@ -186,6 +187,7 @@
   <!-- ============ TRENDS ============ -->
   <section class="view" id="v-stat">
     <select id="sRange" style="margin-bottom:14px">
+      <option value="today">Today</option>
       <option value="7">Last 7 days</option>
       <option value="30" selected>Last 30 days</option>
       <option value="90">Last 90 days</option>
@@ -407,13 +409,18 @@ function itemHTML(e){
 }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])) }
 
-function filtered(days, tag){
+function filtered(range, tag){
+  if(range==='today'){
+    const today=dayKey(Date.now());
+    return entries.filter(e=>dayKey(e.ts)===today && (!tag || e.tag===tag)).sort((a,b)=>b.ts-a.ts);
+  }
+  const days=+range;
   const cut = days ? Date.now()-days*864e5 : 0;
   return entries.filter(e=>e.ts>=cut && (!tag || e.tag===tag)).sort((a,b)=>b.ts-a.ts);
 }
 
 function renderHist(){
-  const list=filtered(+$('#fRange').value, $('#fTag').value);
+  const list=filtered($('#fRange').value, $('#fTag').value);
   if(!list.length){
     $('#histList').innerHTML='<div class="empty">No readings here yet.<br>Log one from the <b>Log</b> tab.</div>';
     return;
@@ -568,8 +575,7 @@ window.importJSON=inp=>{
 
 /* ============================ TRENDS ============================ */
 function renderStats(){
-  const days=+$('#sRange').value;
-  const list=filtered(days,'').slice().sort((a,b)=>a.ts-b.ts);
+  const list=filtered($('#sRange').value,'').slice().sort((a,b)=>a.ts-b.ts);
   const body=$('#statBody');
   if(list.length<1){
     body.innerHTML='<div class="empty">Nothing to chart yet.<br>Log a few readings and your trends show up here.</div>';
