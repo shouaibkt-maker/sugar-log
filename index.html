@@ -218,7 +218,7 @@ const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const VAPID_PUBLIC='BGqQTHo4gQcSBWD2C2we3FnZkxpWGymSpm3Yki1tom3C7CUb2Wbn4z-JyVUOYuHpnIzzuxlroLc9V06phzIKPVA';
 
 const K_DATA='sugarlog.entries.v1', K_CFG='sugarlog.config.v1', K_PENDING='sugarlog.pending.v1';
-const TAGS=['Fasting','Before meal','After meal','Bedtime','Random'];
+const TAGS=['Fasting','After breakfast','Before lunch','After lunch','Before dinner','After dinner','Bedtime','Random'];
 
 let entries = load(K_DATA, []);
 let cfg = Object.assign({low:70, tLow:80, tHigh:180, veryHigh:250}, load(K_CFG, {}));
