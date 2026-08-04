@@ -72,6 +72,16 @@
   .field{margin-bottom:12px}
 
   /* ---- history ---- */
+  .calstrip{display:none;gap:6px;margin-bottom:16px}
+  .calstrip.on{display:flex}
+  .calcell{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:9px 2px 8px;text-align:center}
+  .calcell .cwd{font-size:10px;color:var(--dim);text-transform:uppercase;font-weight:700;letter-spacing:.3px}
+  .calcell .cdn{font-size:16px;font-weight:700;margin:3px 0 6px}
+  .calcell .cdot{width:7px;height:7px;border-radius:50%;margin:0 auto;background:var(--line)}
+  .calcell.today{border-color:var(--dim)}
+  .calcell.on{border-color:var(--accent);background:rgba(79,140,255,.14)}
+  .calcell.on .cwd{color:var(--accent)}
   .daygrp{margin-bottom:20px}
   .dayhd{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 8px;position:sticky;top:63px;
     background:var(--bg);z-index:5}
@@ -181,6 +191,7 @@
       </select>
       <select id="fTag"><option value="">All tags</option></select>
     </div>
+    <div id="calStrip" class="calstrip"></div>
     <div id="histList"></div>
   </section>
 
@@ -226,6 +237,7 @@ let editing = null;      // id of entry being edited, else null
 let pickedTag = 'Fasting';
 let whenTouched = false; // true once the user hand-picks a date/time
 let online = true;
+let selectedDay = null;  // dayKey picked from the 7-day calendar strip, else null
 
 function load(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch(e){ return d } }
 function save(){ localStorage.setItem(K_DATA, JSON.stringify(entries)); }
@@ -419,8 +431,37 @@ function filtered(range, tag){
   return entries.filter(e=>e.ts>=cut && (!tag || e.tag===tag)).sort((a,b)=>b.ts-a.ts);
 }
 
+function buildCalStrip(){
+  const strip=$('#calStrip');
+  const on = $('#fRange').value==='7';
+  strip.classList.toggle('on', on);
+  if(!on){ strip.innerHTML=''; return; }
+  const tag=$('#fTag').value, todayKey=dayKey(Date.now());
+  const cells=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(Date.now()-i*864e5);
+    const k=dayKey(d.getTime());
+    const dayEntries=entries.filter(e=>dayKey(e.ts)===k && (!tag||e.tag===tag));
+    const avg = dayEntries.length ? Math.round(dayEntries.reduce((s,e)=>s+e.v,0)/dayEntries.length) : null;
+    const c = avg==null ? '' : `background:${level(avg).c}`;
+    cells.push(`<button class="calcell${k===todayKey?' today':''}${k===selectedDay?' on':''}" data-day="${k}">
+      <div class="cwd">${k===todayKey?'Today':d.toLocaleDateString(undefined,{weekday:'short'}).slice(0,2)}</div>
+      <div class="cdn">${d.getDate()}</div>
+      <div class="cdot" style="${c}"></div>
+    </button>`);
+  }
+  strip.innerHTML=cells.join('');
+}
+$('#calStrip').addEventListener('click',e=>{
+  const b=e.target.closest('.calcell'); if(!b) return;
+  selectedDay = (selectedDay===b.dataset.day) ? null : b.dataset.day;
+  renderHist();
+});
+
 function renderHist(){
-  const list=filtered($('#fRange').value, $('#fTag').value);
+  buildCalStrip();
+  let list=filtered($('#fRange').value, $('#fTag').value);
+  if($('#fRange').value==='7' && selectedDay) list=list.filter(e=>dayKey(e.ts)===selectedDay);
   if(!list.length){
     $('#histList').innerHTML='<div class="empty">No readings here yet.<br>Log one from the <b>Log</b> tab.</div>';
     return;
@@ -732,7 +773,7 @@ function go(v){
   window.scrollTo(0,0);
 }
 $$('nav button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.v)));
-$('#fRange').addEventListener('change',renderHist);
+$('#fRange').addEventListener('change',()=>{ selectedDay=null; renderHist(); });
 $('#fTag').addEventListener('change',renderHist);
 $('#sRange').addEventListener('change',renderStats);
 
