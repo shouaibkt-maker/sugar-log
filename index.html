@@ -48,6 +48,8 @@
   #val::placeholder{color:#39404f}
   #val::-webkit-outer-spin-button,#val::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   #val{-moz-appearance:textfield}
+  #val.flagme{animation:flagpulse .5s ease 2}
+  @keyframes flagpulse{0%,100%{color:var(--txt)}50%{color:var(--low)}}
   .unit{font-size:15px;color:var(--dim);font-weight:600}
   #verdict{text-align:center;font-size:14px;font-weight:650;height:20px;margin-bottom:14px}
 
@@ -162,7 +164,7 @@
         </div>
       </details>
 
-      <button class="save" id="btnSave" disabled>Save reading</button>
+      <button class="save" id="btnSave">Save reading</button>
     </div>
     <div id="recent"></div>
   </section>
@@ -331,7 +333,7 @@ $('#tags').addEventListener('click',e=>{
 $('#val').addEventListener('input',()=>{
   const v=parseFloat($('#val').value);
   const ok = !isNaN(v) && v>=10 && v<=900;
-  $('#btnSave').disabled=!ok;
+  $('#val').classList.remove('flagme');
   const el=$('#verdict');
   if(!ok){ el.textContent=''; $('#val').style.color='var(--txt)'; return; }
   const L=level(v);
@@ -339,8 +341,16 @@ $('#val').addEventListener('input',()=>{
 });
 
 $('#btnSave').addEventListener('click', async ()=>{
-  const v=Math.round(parseFloat($('#val').value));
-  if(isNaN(v)) return;
+  const raw=$('#val').value;
+  const v=Math.round(parseFloat(raw));
+  const ok = !isNaN(v) && v>=10 && v<=900;
+  if(!ok){
+    $('#val').scrollIntoView({behavior:'smooth', block:'center'});
+    $('#val').focus();
+    $('#val').classList.add('flagme');
+    toast(raw ? 'Enter a number between 10 and 900' : 'Enter your blood sugar number above first', true);
+    return;
+  }
   // The date field is pre-filled when the page loads, so it goes stale if the
   // app sits open. Only trust it once the user has actually picked a time.
   const wRaw=$('#when').value;
@@ -367,7 +377,7 @@ function resetForm(){
   $('#val').value=''; $('#note').value=''; $('#dose').value='';
   $('#verdict').textContent=''; $('#val').style.color='var(--txt)';
   $('#when').value=toLocalInput(new Date());
-  $('#btnSave').disabled=true; $('#btnSave').textContent='Save reading';
+  $('#btnSave').textContent='Save reading';
   pickedTag='Fasting'; buildTags(); editing=null; whenTouched=false;
   $('.more').open=false;
 }
