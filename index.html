@@ -206,6 +206,7 @@
       <option value="90">Last 90 days</option>
       <option value="0">All time</option>
     </select>
+    <div id="calStripS" class="calstrip"></div>
     <div id="statBody"></div>
   </section>
 </main>
@@ -239,7 +240,8 @@ let editing = null;      // id of entry being edited, else null
 let pickedTag = 'Fasting';
 let whenTouched = false; // true once the user hand-picks a date/time
 let online = true;
-let selectedDay = null;  // dayKey picked from the 7-day calendar strip, else null
+let selectedDay = null;  // dayKey picked from History's calendar strip, else null
+let selectedDayS = null; // dayKey picked from Trends' calendar strip, else null
 
 function load(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch(e){ return d } }
 function save(){ localStorage.setItem(K_DATA, JSON.stringify(entries)); }
@@ -434,15 +436,13 @@ function filtered(range, tag){
 }
 
 const CAL_RANGES=['7','30','90'];
-function buildCalStrip(){
-  const strip=$('#calStrip');
-  const range=$('#fRange').value;
+function buildCalStripInto(strip, range, tag, selDay){
   const on = CAL_RANGES.includes(range);
   strip.classList.toggle('on', on);
   if(!on){ strip.innerHTML=''; return; }
   const dayCount=+range;
   strip.classList.toggle('scroll', dayCount>7);
-  const tag=$('#fTag').value, todayKey=dayKey(Date.now());
+  const todayKey=dayKey(Date.now());
   const cells=[];
   for(let i=dayCount-1;i>=0;i--){
     const d=new Date(Date.now()-i*864e5);
@@ -450,7 +450,7 @@ function buildCalStrip(){
     const dayEntries=entries.filter(e=>dayKey(e.ts)===k && (!tag||e.tag===tag));
     const avg = dayEntries.length ? Math.round(dayEntries.reduce((s,e)=>s+e.v,0)/dayEntries.length) : null;
     const c = avg==null ? '' : `background:${level(avg).c}`;
-    cells.push(`<button class="calcell${k===todayKey?' today':''}${k===selectedDay?' on':''}" data-day="${k}">
+    cells.push(`<button class="calcell${k===todayKey?' today':''}${k===selDay?' on':''}" data-day="${k}">
       <div class="cwd">${k===todayKey?'Today':d.toLocaleDateString(undefined,{weekday:'short'}).slice(0,2)}</div>
       <div class="cdn">${d.getDate()}</div>
       <div class="cdot" style="${c}"></div>
@@ -458,6 +458,9 @@ function buildCalStrip(){
   }
   strip.innerHTML=cells.join('');
   if(dayCount>7) strip.scrollLeft=strip.scrollWidth;
+}
+function buildCalStrip(){
+  buildCalStripInto($('#calStrip'), $('#fRange').value, $('#fTag').value, selectedDay);
 }
 $('#calStrip').addEventListener('click',e=>{
   const b=e.target.closest('.calcell'); if(!b) return;
@@ -622,11 +625,25 @@ window.importJSON=inp=>{
 };
 
 /* ============================ TRENDS ============================ */
+function buildCalStripS(){
+  buildCalStripInto($('#calStripS'), $('#sRange').value, '', selectedDayS);
+}
+$('#calStripS').addEventListener('click',e=>{
+  const b=e.target.closest('.calcell'); if(!b) return;
+  selectedDayS = (selectedDayS===b.dataset.day) ? null : b.dataset.day;
+  renderStats();
+});
+
 function renderStats(){
-  const list=filtered($('#sRange').value,'').slice().sort((a,b)=>a.ts-b.ts);
+  buildCalStripS();
+  const range=$('#sRange').value;
+  const daySelected = CAL_RANGES.includes(range) && selectedDayS;
+  let list=filtered(range,'').slice().sort((a,b)=>a.ts-b.ts);
+  if(daySelected) list=list.filter(e=>dayKey(e.ts)===selectedDayS);
   const body=$('#statBody');
   if(list.length<1){
-    body.innerHTML='<div class="empty">Nothing to chart yet.<br>Log a few readings and your trends show up here.</div>';
+    body.innerHTML=(daySelected?`<div class="lbl" style="margin-bottom:10px">${dayLabel(selectedDayS)}</div>`:'')+
+      '<div class="empty">No readings on this day.<br>Log one from the <b>Log</b> tab.</div>';
     return;
   }
   const vals=list.map(e=>e.v);
@@ -643,11 +660,14 @@ function renderStats(){
   list.forEach(e=>{ const t=e.tag||'—'; (byTag[t] ||= []).push(e.v) });
 
   body.innerHTML=`
+    ${daySelected?`<div class="lbl" style="margin-bottom:10px">${dayLabel(selectedDayS)}</div>`:''}
     <div class="grid2">
-      <div class="stat"><div class="k">Average</div><div class="v">${Math.round(avg)}</div><div class="s">mg/dL · ${n} readings</div></div>
-      <div class="stat"><div class="k">Est. A1c</div><div class="v">${a1c.toFixed(1)}%</div><div class="s">estimate only</div></div>
-      <div class="stat"><div class="k">Lowest</div><div class="v" style="color:var(--low)">${Math.min(...vals)}</div><div class="s">${dayLabel(dayKey(list[vals.indexOf(Math.min(...vals))].ts))}</div></div>
-      <div class="stat"><div class="k">Highest</div><div class="v" style="color:var(--high)">${Math.max(...vals)}</div><div class="s">${dayLabel(dayKey(list[vals.indexOf(Math.max(...vals))].ts))}</div></div>
+      <div class="stat"><div class="k">Average</div><div class="v">${Math.round(avg)}</div><div class="s">mg/dL · ${n} reading${n>1?'s':''}</div></div>
+      ${daySelected
+        ? `<div class="stat"><div class="k">Readings</div><div class="v">${n}</div><div class="s">logged that day</div></div>`
+        : `<div class="stat"><div class="k">Est. A1c</div><div class="v">${a1c.toFixed(1)}%</div><div class="s">estimate only</div></div>`}
+      <div class="stat"><div class="k">Lowest</div><div class="v" style="color:var(--low)">${Math.min(...vals)}</div><div class="s">${daySelected?timeStr(list[vals.indexOf(Math.min(...vals))].ts):dayLabel(dayKey(list[vals.indexOf(Math.min(...vals))].ts))}</div></div>
+      <div class="stat"><div class="k">Highest</div><div class="v" style="color:var(--high)">${Math.max(...vals)}</div><div class="s">${daySelected?timeStr(list[vals.indexOf(Math.max(...vals))].ts):dayLabel(dayKey(list[vals.indexOf(Math.max(...vals))].ts))}</div></div>
     </div>
 
     <div class="card">
@@ -668,7 +688,7 @@ function renderStats(){
     </div>
 
     <div class="card">
-      <div class="lbl">Trend</div>
+      <div class="lbl">${daySelected?'Readings through the day':'Trend'}</div>
       ${chart(list)}
     </div>
 
@@ -681,7 +701,7 @@ function renderStats(){
       }).join('')}
       </tbody></table>
     </div>
-    <p class="note">Estimated A1c is a rough formula from your average and only counts readings you logged here — it is not a lab result.</p>`;
+    ${daySelected?'':'<p class="note">Estimated A1c is a rough formula from your average and only counts readings you logged here — it is not a lab result.</p>'}`;
 }
 
 function chart(list){
@@ -698,7 +718,8 @@ function chart(list){
   const grid=gy.map(v=>`<line x1="${PL}" y1="${Y(v)}" x2="${W-PR}" y2="${Y(v)}" stroke="#272c37" stroke-dasharray="3 4"/>
      <text x="4" y="${Y(v)+3.5}">${v}</text>`).join('');
   const dots=list.map(e=>`<circle cx="${X(e.ts).toFixed(1)}" cy="${Y(e.v).toFixed(1)}" r="3.2" fill="${level(e.v).c}"/>`).join('');
-  const lbl=(ts)=>{const d=new Date(ts);return `${d.getDate()}/${d.getMonth()+1}`};
+  const sameDay=dayKey(t0)===dayKey(t1);
+  const lbl=(ts)=>{const d=new Date(ts); return sameDay ? timeStr(ts) : `${d.getDate()}/${d.getMonth()+1}`};
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
     ${band}${grid}
     ${list.length>1?`<polyline points="${pts}" fill="none" stroke="#4f8cff" stroke-width="1.6" stroke-linejoin="round" opacity=".65"/>`:''}
@@ -782,7 +803,7 @@ function go(v){
 $$('nav button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.v)));
 $('#fRange').addEventListener('change',()=>{ selectedDay=null; renderHist(); });
 $('#fTag').addEventListener('change',renderHist);
-$('#sRange').addEventListener('change',renderStats);
+$('#sRange').addEventListener('change',()=>{ selectedDayS=null; renderStats(); });
 
 function renderAll(){
   $('#fTag').innerHTML='<option value="">All tags</option>'+TAGS.map(t=>`<option>${t}</option>`).join('');
