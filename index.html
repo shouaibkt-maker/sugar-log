@@ -74,8 +74,10 @@
   /* ---- history ---- */
   .calstrip{display:none;gap:6px;margin-bottom:16px}
   .calstrip.on{display:flex}
+  .calstrip.scroll{overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity}
   .calcell{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:12px;
     padding:9px 2px 8px;text-align:center}
+  .calstrip.scroll .calcell{flex:none;width:46px;scroll-snap-align:end}
   .calcell .cwd{font-size:10px;color:var(--dim);text-transform:uppercase;font-weight:700;letter-spacing:.3px}
   .calcell .cdn{font-size:16px;font-weight:700;margin:3px 0 6px}
   .calcell .cdot{width:7px;height:7px;border-radius:50%;margin:0 auto;background:var(--line)}
@@ -431,14 +433,18 @@ function filtered(range, tag){
   return entries.filter(e=>e.ts>=cut && (!tag || e.tag===tag)).sort((a,b)=>b.ts-a.ts);
 }
 
+const CAL_RANGES=['7','30','90'];
 function buildCalStrip(){
   const strip=$('#calStrip');
-  const on = $('#fRange').value==='7';
+  const range=$('#fRange').value;
+  const on = CAL_RANGES.includes(range);
   strip.classList.toggle('on', on);
   if(!on){ strip.innerHTML=''; return; }
+  const dayCount=+range;
+  strip.classList.toggle('scroll', dayCount>7);
   const tag=$('#fTag').value, todayKey=dayKey(Date.now());
   const cells=[];
-  for(let i=6;i>=0;i--){
+  for(let i=dayCount-1;i>=0;i--){
     const d=new Date(Date.now()-i*864e5);
     const k=dayKey(d.getTime());
     const dayEntries=entries.filter(e=>dayKey(e.ts)===k && (!tag||e.tag===tag));
@@ -451,6 +457,7 @@ function buildCalStrip(){
     </button>`);
   }
   strip.innerHTML=cells.join('');
+  if(dayCount>7) strip.scrollLeft=strip.scrollWidth;
 }
 $('#calStrip').addEventListener('click',e=>{
   const b=e.target.closest('.calcell'); if(!b) return;
@@ -461,7 +468,7 @@ $('#calStrip').addEventListener('click',e=>{
 function renderHist(){
   buildCalStrip();
   let list=filtered($('#fRange').value, $('#fTag').value);
-  if($('#fRange').value==='7' && selectedDay) list=list.filter(e=>dayKey(e.ts)===selectedDay);
+  if(CAL_RANGES.includes($('#fRange').value) && selectedDay) list=list.filter(e=>dayKey(e.ts)===selectedDay);
   if(!list.length){
     $('#histList').innerHTML='<div class="empty">No readings here yet.<br>Log one from the <b>Log</b> tab.</div>';
     return;
