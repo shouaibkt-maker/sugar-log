@@ -53,9 +53,9 @@
   .unit{font-size:15px;color:var(--dim);font-weight:600}
   #verdict{text-align:center;font-size:14px;font-weight:650;height:20px;margin-bottom:14px}
 
-  .chips{display:flex;flex-wrap:wrap;gap:8px}
-  .chip{padding:9px 14px;border-radius:999px;background:var(--card2);border:1px solid var(--line);
-    font-size:14px;color:var(--dim);font-weight:550;transition:.12s}
+  .chips{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{padding:12px 16px;min-height:44px;border-radius:999px;background:var(--card2);border:1px solid var(--line);
+    font-size:14.5px;color:var(--dim);font-weight:550;transition:.12s}
   .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 
   .row{display:flex;gap:10px}
@@ -152,7 +152,7 @@
   <section class="view on" id="v-log">
     <div class="card">
       <div class="bigwrap">
-        <input id="val" type="number" inputmode="decimal" placeholder="—" step="1" min="10" max="900">
+        <input id="val" type="number" inputmode="decimal" placeholder="—" step="1" min="10" max="900" autofocus>
         <span class="unit">mg/dL</span>
       </div>
       <div id="verdict"></div>
@@ -391,13 +391,24 @@ $('#btnSave').addEventListener('click', async ()=>{
   catch(e){ queuePending({type:'upsert', rec}); setOnline(false); }
 });
 
+function guessTag(){
+  const h=new Date().getHours();
+  if(h>=4 && h<9) return 'Fasting';
+  if(h>=9 && h<11) return 'After breakfast';
+  if(h>=11 && h<13) return 'Before lunch';
+  if(h>=13 && h<16) return 'After lunch';
+  if(h>=16 && h<19) return 'Before dinner';
+  if(h>=19 && h<22) return 'After dinner';
+  return 'Bedtime';
+}
 function resetForm(){
   $('#val').value=''; $('#note').value=''; $('#dose').value='';
   $('#verdict').textContent=''; $('#val').style.color='var(--txt)';
   $('#when').value=toLocalInput(new Date());
   $('#btnSave').textContent='Save reading';
-  pickedTag='Fasting'; buildTags(); editing=null; whenTouched=false;
+  pickedTag=guessTag(); buildTags(); editing=null; whenTouched=false;
   $('.more').open=false;
+  $('#val').focus({preventScroll:true});
 }
 $('#when').addEventListener('input',()=>{ whenTouched=true });
 // coming back to the app after a while: refresh the pre-filled "now"
