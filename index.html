@@ -310,7 +310,9 @@ async function bootSync(){
 /* ---------- date helpers (all local time, never UTC) ---------- */
 const pad=n=>String(n).padStart(2,'0');
 function toLocalInput(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}` }
-function dayKey(ts){ const d=new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` }
+// "Day" rolls over at 4am, not midnight — a bedtime reading at 00:30 still
+// belongs to the day you haven't slept through yet, not the next calendar day.
+function dayKey(ts){ const d=new Date(ts-4*3600e3); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` }
 function timeStr(ts){ const d=new Date(ts); return `${pad(d.getHours())}:${pad(d.getMinutes())}` }
 function dayLabel(key){
   const t=new Date(), y=new Date(Date.now()-864e5);
